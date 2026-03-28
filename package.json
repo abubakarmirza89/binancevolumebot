@@ -1,0 +1,15 @@
+{
+  "name": "binance-volume-bot-vercel",
+  "version": "1.0.0",
+  "description": "Smart Binance Futures Volume Bot - Vercel Deployment",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "engines": {
+    "node": "18.x"
+  },
+  "keywords": ["binance", "trading-bot", "futures", "volume"],
+  "author": "",
+  "license": "MIT"
+}
