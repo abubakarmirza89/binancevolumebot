@@ -1,3 +1,16 @@
 {
-  "users": []
+  "users": [
+    {
+      "username": "user1",
+      "password": "Karachi123@",
+      "email": "user1@trader.com",
+      "status": "active"
+    },
+    {
+      "username": "user2",
+      "password": "Karachi123@",
+      "email": "user2@trader.com",
+      "status": "active"
+    }
+  ]
 }
