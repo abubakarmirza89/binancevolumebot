@@ -1,4 +1,0 @@
-{
-  "buildCommand": "echo 'Building for Vercel'",
-  "framework": "static"
-}
