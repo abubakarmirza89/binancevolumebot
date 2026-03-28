@@ -1,10 +1,152 @@
-<!-- Binance Volume Bot - Vercel Ready -->
+<!-- Binance Volume Bot - Vercel Ready with User Authentication -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Binance Volume Bot</title>
+<style>
+  /* LOGIN MODAL STYLES */
+  .login-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(13, 17, 23, 0.95);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+  }
+  .login-modal.hidden {
+    display: none;
+  }
+  .login-container {
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 12px;
+    padding: 40px;
+    width: 100%;
+    max-width: 400px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+  }
+  .login-container h1 {
+    color: #f0b90b;
+    font-size: 24px;
+    margin-bottom: 8px;
+    text-align: center;
+    font-weight: 600;
+  }
+  .login-container .subtitle {
+    color: #8b949e;
+    font-size: 13px;
+    text-align: center;
+    margin-bottom: 24px;
+  }
+  .login-form-group {
+    margin-bottom: 16px;
+  }
+  .login-form-group label {
+    display: block;
+    color: #8b949e;
+    font-size: 12px;
+    margin-bottom: 6px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .login-form-group input {
+    width: 100%;
+    background: #0d1117;
+    border: 1px solid #30363d;
+    border-radius: 6px;
+    color: #e6edf3;
+    padding: 10px 12px;
+    font-size: 14px;
+    transition: all 0.2s;
+    box-sizing: border-box;
+  }
+  .login-form-group input:focus {
+    outline: none;
+    border-color: #f0b90b;
+    box-shadow: 0 0 0 3px rgba(240, 185, 11, 0.1);
+  }
+  .login-form-group input::placeholder {
+    color: #6e7681;
+  }
+  .login-btn {
+    width: 100%;
+    background: #f0b90b;
+    color: #0d1117;
+    border: none;
+    border-radius: 6px;
+    padding: 12px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-top: 8px;
+  }
+  .login-btn:hover {
+    background: #ffd700;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(240, 185, 11, 0.3);
+  }
+  .login-btn:disabled {
+    background: #6e7681;
+    cursor: not-allowed;
+    transform: none;
+  }
+  .login-error {
+    background: #f8514911;
+    border: 1px solid #f8514944;
+    border-radius: 6px;
+    color: #f85149;
+    padding: 10px 12px;
+    font-size: 12px;
+    margin-bottom: 16px;
+    display: none;
+  }
+  .login-error.show {
+    display: block;
+    animation: shake 0.4s;
+  }
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-5px); }
+    75% { transform: translateX(5px); }
+  }
+  .login-success {
+    background: #3fb95011;
+    border: 1px solid #3fb95044;
+    border-radius: 6px;
+    color: #3fb950;
+    padding: 10px 12px;
+    font-size: 12px;
+    margin-bottom: 16px;
+    display: none;
+  }
+  .login-success.show {
+    display: block;
+  }
+  .login-info {
+    background: #58a6ff11;
+    border: 1px solid #58a6ff44;
+    border-radius: 6px;
+    color: #58a6ff;
+    padding: 12px;
+    font-size: 11px;
+    line-height: 1.6;
+    text-align: center;
+    margin-top: 16px;
+    margin-bottom: 16px;
+  }
+  .login-info strong {
+    display: block;
+    margin-bottom: 6px;
+  }
+</style>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { font-family: 'Segoe UI', sans-serif; background: #0d1117; color: #e6edf3; min-height: 100vh; }
@@ -85,6 +227,61 @@
 </head>
 <body>
 
+<!-- LOGIN MODAL -->
+<div class="login-modal" id="loginModal">
+  <div class="login-container">
+    <h1>🔐 Binance Volume Bot</h1>
+    <div class="subtitle">Secure Access Required</div>
+    
+    <div class="login-info">
+      <strong>Demo Credentials:</strong>
+      Username: <code style="background:#0d1117;padding:2px 4px;border-radius:3px">admin</code><br>
+      Password: <code style="background:#0d1117;padding:2px 4px;border-radius:3px">Admin@123</code>
+    </div>
+
+    <div class="login-error" id="loginError">
+      <span id="loginErrorMsg">Invalid username or password</span>
+    </div>
+
+    <div class="login-success" id="loginSuccess">
+      ✓ Login successful! Loading bot...
+    </div>
+
+    <form id="loginForm" onsubmit="handleLogin(event)">
+      <div class="login-form-group">
+        <label for="username">Username</label>
+        <input 
+          type="text" 
+          id="username" 
+          placeholder="Enter your username" 
+          required
+          autocomplete="username"
+        >
+      </div>
+
+      <div class="login-form-group">
+        <label for="password">Password</label>
+        <input 
+          type="password" 
+          id="password" 
+          placeholder="Enter your password" 
+          required
+          autocomplete="current-password"
+        >
+      </div>
+
+      <button type="submit" class="login-btn" id="loginBtn">
+        Login
+      </button>
+    </form>
+
+    <div style="margin-top: 16px; text-align: center; color: #8b949e; font-size: 11px;">
+      <div style="margin-bottom: 8px;">To add users, edit <code style="background:#0d1117;padding:2px 6px;border-radius:3px">/data/users.json</code></div>
+      <div>API keys are encrypted in browser storage</div>
+    </div>
+  </div>
+</div>
+
 <div class="header">
   <div>
     <div style="display:flex;align-items:center;gap:10px">
@@ -99,6 +296,7 @@
   </div>
 </div>
 
+<div id="mainContent" style="display:none">
 <div class="container">
   <div class="proxy-info" id="proxyInfo">
     ✓ Proxy Mode: Vercel se safely Binance API call ho rahe hain
@@ -265,11 +463,169 @@
     </div>
   </div>
 </div>
+</div>
 
 <script>
 // ═══════════════════════════════════════════════════════════════════════════
-// PROXY CONFIGURATION FOR VERCEL
+// USER AUTHENTICATION SYSTEM
 // ═══════════════════════════════════════════════════════════════════════════
+
+let authenticatedUser = localStorage.getItem('bnc_auth_user');
+
+// Load users from JSON (or API on Vercel)
+async function loadUsers() {
+  try {
+    // Try API endpoint first (for Vercel)
+    let response;
+    const isVercel = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
+    
+    if (isVercel) {
+      response = await fetch('/api/users');
+    } else {
+      // Local development
+      response = await fetch('/data/users.json');
+    }
+    
+    if (!response.ok) throw new Error('Failed to load users');
+    const data = await response.json();
+    return data.users || [];
+  } catch (e) {
+    console.error('Error loading users:', e);
+    // Return default users as fallback
+    return [
+      { username: 'admin', password: 'Admin@123', email: 'admin@binancebot.com', status: 'active' },
+      { username: 'trader1', password: 'Trader@123', email: 'trader1@binancebot.com', status: 'active' },
+      { username: 'demo', password: 'Demo@123', email: 'demo@binancebot.com', status: 'active' }
+    ];
+  }
+}
+
+// Handle login submission
+async function handleLogin(event) {
+  event.preventDefault();
+  
+  const username = document.getElementById('username').value.trim();
+  const password = document.getElementById('password').value;
+  const loginBtn = document.getElementById('loginBtn');
+  const loginError = document.getElementById('loginError');
+  const loginSuccess = document.getElementById('loginSuccess');
+  
+  loginError.classList.remove('show');
+  loginSuccess.classList.remove('show');
+  loginBtn.disabled = true;
+  loginBtn.textContent = 'Checking...';
+
+  try {
+    const users = await loadUsers();
+    const user = users.find(u => u.username === username && u.password === password && u.status === 'active');
+
+    if (user) {
+      loginSuccess.classList.add('show');
+      localStorage.setItem('bnc_auth_user', user.username);
+      localStorage.setItem('bnc_auth_time', Date.now());
+      
+      setTimeout(() => {
+        authenticateSession(user.username);
+      }, 800);
+    } else {
+      loginError.classList.add('show');
+      document.getElementById('loginErrorMsg').textContent = 'Invalid username or password';
+      loginBtn.disabled = false;
+      loginBtn.textContent = 'Login';
+    }
+  } catch (e) {
+    loginError.classList.add('show');
+    document.getElementById('loginErrorMsg').textContent = 'Error checking credentials';
+    loginBtn.disabled = false;
+    loginBtn.textContent = 'Login';
+  }
+}
+
+// Authenticate the session
+function authenticateSession(username) {
+  const loginModal = document.getElementById('loginModal');
+  const mainContent = document.getElementById('mainContent');
+  
+  if (loginModal) loginModal.classList.add('hidden');
+  if (mainContent) mainContent.style.display = 'block';
+  
+  console.log('✓ Authenticated as:', username);
+  
+  // Add auth indicator
+  addAuthIndicator(username);
+}
+
+// Add authentication indicator
+function addAuthIndicator(username) {
+  const header = document.querySelector('.header .status-bar');
+  if (header) {
+    let authIndicator = document.getElementById('authIndicator');
+    if (!authIndicator) {
+      authIndicator = document.createElement('div');
+      authIndicator.id = 'authIndicator';
+      authIndicator.style.cssText = 'display:flex;align-items:center;gap:8px;margin-left:16px;padding-left:16px;border-left:1px solid #30363d;font-size:12px;color:#8b949e';
+      authIndicator.innerHTML = `👤 <span id="authUsername">${username}</span> <button onclick="logout()" style="background:none;border:none;color:#8b949e;cursor:pointer;font-size:11px;text-decoration:underline;padding:0">Logout</button>`;
+      header.appendChild(authIndicator);
+    }
+  }
+}
+
+// Logout function
+function logout() {
+  if (confirm('Are you sure you want to logout?')) {
+    localStorage.removeItem('bnc_auth_user');
+    localStorage.removeItem('bnc_auth_time');
+    location.reload();
+  }
+}
+
+// Check if session is valid
+function checkSession() {
+  const user = localStorage.getItem('bnc_auth_user');
+  return user !== null;
+}
+
+// Initialize authentication on page load
+document.addEventListener('DOMContentLoaded', async function() {
+  const loginModal = document.getElementById('loginModal');
+  const mainContent = document.getElementById('mainContent');
+  const usernameInput = document.getElementById('username');
+  
+  // Focus username input
+  if (usernameInput) usernameInput.focus();
+  
+  // Check if user is already authenticated
+  if (checkSession()) {
+    const user = localStorage.getItem('bnc_auth_user');
+    authenticateSession(user);
+  } else {
+    // Show login modal
+    if (loginModal) loginModal.classList.remove('hidden');
+    if (mainContent) mainContent.style.display = 'none';
+  }
+});
+
+// Optional: Add session timeout (30 minutes)
+let sessionTimeout;
+function resetSessionTimeout() {
+  clearTimeout(sessionTimeout);
+  sessionTimeout = setTimeout(() => {
+    if (checkSession()) {
+      alert('Session expired. Please login again.');
+      logout();
+    }
+  }, 30 * 60 * 1000); // 30 minutes
+}
+
+// Reset timeout on user activity
+if (document.addEventListener) {
+  document.addEventListener('mousedown', resetSessionTimeout);
+  document.addEventListener('keydown', resetSessionTimeout);
+}
+resetSessionTimeout();
+</script>
+
+<script>
 const USE_PROXY = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
 const PROXY_ENDPOINT = '/api/proxy';
 
