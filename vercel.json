@@ -1,4 +1,12 @@
 {
   "buildCommand": "echo 'Building for Vercel'",
-  "outputDirectory": "./public"
+  "outputDirectory": "./public",
+  "functions": {
+    "api/**/*.js": {
+      "runtime": "nodejs24.x"
+    }
+  },
+  "env": {
+    "NODE_VERSION": "24.x"
+  }
 }
