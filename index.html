@@ -633,15 +633,9 @@ async function proxiedFetch(url, options = {}) {
     return fetch(url, options);
   }
 
-  // Extract Binance API path
-  const urlObj = new URL(url);
-  const path = urlObj.pathname.replace('/fapi', '') + urlObj.search;
-  const env = url.includes('demo-fapi') ? 'testnet' : 'mainnet';
-  
   const body = {
+    url: url,
     method: options.method || 'GET',
-    path: path,
-    env: env,
     headers: options.headers || {}
   };
 
@@ -655,11 +649,13 @@ async function proxiedFetch(url, options = {}) {
     body: JSON.stringify(body)
   });
 
+  const proxyData = await proxyRes.json();
+  
   return {
-    ok: proxyRes.ok,
-    status: proxyRes.status,
-    json: () => proxyRes.json(),
-    text: () => proxyRes.text(),
+    ok: proxyRes.ok && proxyData.status < 400,
+    status: proxyData.status,
+    json: () => Promise.resolve(proxyData.data),
+    text: () => Promise.resolve(typeof proxyData.data === 'string' ? proxyData.data : JSON.stringify(proxyData.data)),
     headers: proxyRes.headers
   };
 }
