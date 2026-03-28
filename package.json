@@ -8,7 +8,7 @@
     "build": "echo 'Static build complete'"
   },
   "engines": {
-    "node": ">=20.0.0"
+    "node": "20.x"
   },
   "keywords": ["binance", "trading-bot", "futures", "volume"],
   "author": "",
