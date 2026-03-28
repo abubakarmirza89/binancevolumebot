@@ -1,0 +1,1088 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Binance Volume Bot</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Segoe UI', sans-serif; background: #0d1117; color: #e6edf3; min-height: 100vh; }
+  .header { background: #161b22; border-bottom: 1px solid #30363d; padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; }
+  .header h1 { font-size: 18px; font-weight: 600; color: #f0b90b; }
+  .header .subtitle { font-size: 12px; color: #8b949e; margin-top: 2px; }
+  .status-bar { display: flex; gap: 8px; align-items: center; }
+  .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #3fb950; animation: pulse 2s infinite; }
+  .status-dot.inactive { background: #6e7681; animation: none; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+  .container { padding: 20px 24px; max-width: 1100px; margin: 0 auto; }
+  .grid-top { display: grid; grid-template-columns: 300px 1fr; gap: 16px; margin-bottom: 16px; }
+  .card { background: #161b22; border: 1px solid #30363d; border-radius: 10px; padding: 16px; }
+  .card h3 { font-size: 13px; font-weight: 600; color: #8b949e; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 14px; }
+  .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+  .stat { background: #0d1117; border: 1px solid #30363d; border-radius: 8px; padding: 10px 12px; }
+  .stat .label { font-size: 11px; color: #8b949e; margin-bottom: 4px; }
+  .stat .value { font-size: 18px; font-weight: 600; color: #e6edf3; }
+  .stat .value.green { color: #3fb950; }
+  .stat .value.red { color: #f85149; }
+  .stat .value.yellow { color: #f0b90b; }
+  .stat .value.blue { color: #58a6ff; }
+  .form-row { margin-bottom: 12px; }
+  .form-row label { display: block; font-size: 12px; color: #8b949e; margin-bottom: 5px; }
+  .form-row input, .form-row select { width: 100%; background: #0d1117; border: 1px solid #30363d; border-radius: 6px; color: #e6edf3; padding: 8px 10px; font-size: 13px; outline: none; }
+  .form-row input:focus, .form-row select:focus { border-color: #f0b90b; }
+  .btn { width: 100%; padding: 10px; border-radius: 8px; border: none; cursor: pointer; font-size: 14px; font-weight: 600; transition: all 0.2s; margin-top: 8px; }
+  .btn-start { background: #3fb950; color: #0d1117; }
+  .btn-start:hover { background: #56d364; }
+  .btn-stop { background: #f85149; color: #fff; }
+  .btn-stop:hover { background: #ff7b72; }
+  .ip-box { background: #0d1117; border: 1px solid #30363d; border-radius: 8px; padding: 10px 12px; margin-top: 12px; display: flex; align-items: center; justify-content: space-between; }
+  .ip-box .ip-label { font-size: 11px; color: #8b949e; }
+  .ip-box .ip-val { font-size: 14px; font-weight: 600; color: #58a6ff; font-family: monospace; }
+  .copy-btn { background: #21262d; border: 1px solid #30363d; color: #8b949e; padding: 4px 10px; border-radius: 5px; font-size: 11px; cursor: pointer; }
+  .copy-btn:hover { color: #e6edf3; }
+  .pairs-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 16px; }
+  .pair-card { background: #0d1117; border: 1px solid #30363d; border-radius: 8px; padding: 10px; cursor: pointer; transition: all 0.2s; position: relative; }
+  .pair-card:hover { border-color: #f0b90b44; }
+  .pair-card.selected { border-color: #f0b90b; background: #f0b90b11; }
+  .pair-card.trading { border-color: #3fb950; background: #3fb95011; }
+  .pair-card .sym { font-size: 13px; font-weight: 600; color: #e6edf3; }
+  .pair-card .px { font-size: 12px; color: #8b949e; margin-top: 2px; }
+  .pair-card .chg { font-size: 11px; font-weight: 600; margin-top: 2px; }
+  .pair-card .score-bar { height: 3px; border-radius: 2px; margin-top: 6px; background: #21262d; overflow: hidden; }
+  .pair-card .score-fill { height: 100%; border-radius: 2px; transition: width 0.5s; }
+  .pair-card .badge { position: absolute; top: 6px; right: 6px; font-size: 9px; font-weight: 700; padding: 2px 5px; border-radius: 4px; text-transform: uppercase; }
+  .badge-hot { background: #f0b90b22; color: #f0b90b; border: 1px solid #f0b90b44; }
+  .badge-live { background: #3fb95022; color: #3fb950; border: 1px solid #3fb95044; }
+  .log-box { background: #0d1117; border: 1px solid #30363d; border-radius: 8px; height: 300px; overflow-y: auto; padding: 10px; font-family: monospace; font-size: 12px; }
+  .log-entry { padding: 3px 0; border-bottom: 1px solid #21262d; line-height: 1.5; }
+  .log-entry:last-child { border-bottom: none; }
+  .log-time { color: #8b949e; margin-right: 8px; }
+  .log-buy { color: #3fb950; }
+  .log-sell { color: #f85149; }
+  .log-info { color: #58a6ff; }
+  .log-warn { color: #f0b90b; }
+  .trades-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .trades-table th { color: #8b949e; text-align: left; padding: 6px 8px; border-bottom: 1px solid #30363d; font-weight: 500; }
+  .trades-table td { padding: 6px 8px; border-bottom: 1px solid #21262d; color: #e6edf3; }
+  .trades-table tr:last-child td { border-bottom: none; }
+  .badge-long { background: #3fb95022; color: #3fb950; border: 1px solid #3fb95044; font-size: 10px; padding: 1px 6px; border-radius: 4px; }
+  .badge-short { background: #f8514922; color: #f85149; border: 1px solid #f8514944; font-size: 10px; padding: 1px 6px; border-radius: 4px; }
+  .badge-open { background: #f0b90b22; color: #f0b90b; border: 1px solid #f0b90b44; font-size: 10px; padding: 1px 6px; border-radius: 4px; }
+  .badge-closed { background: #8b949e22; color: #8b949e; border: 1px solid #8b949e44; font-size: 10px; padding: 1px 6px; border-radius: 4px; }
+  .warning-box { background: #f0b90b11; border: 1px solid #f0b90b44; border-radius: 8px; padding: 10px 14px; font-size: 12px; color: #f0b90b; margin-bottom: 14px; display: flex; gap: 8px; align-items: flex-start; }
+  .progress-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .progress-bar { flex: 1; height: 6px; background: #21262d; border-radius: 3px; overflow: hidden; }
+  .progress-fill { height: 100%; border-radius: 3px; background: #f0b90b; transition: width 0.5s; }
+  .progress-label { font-size: 12px; color: #8b949e; min-width: 100px; }
+  .progress-val { font-size: 12px; font-weight: 600; color: #e6edf3; min-width: 50px; text-align: right; }
+  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar-track { background: #0d1117; }
+  ::-webkit-scrollbar-thumb { background: #30363d; border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <div style="display:flex;align-items:center;gap:10px">
+      <h1>&#9654; Binance Volume Bot</h1>
+      <div style="font-size:11px;background:#f0b90b22;color:#f0b90b;border:1px solid #f0b90b44;padding:2px 8px;border-radius:4px">USDS-M Futures</div>
+    </div>
+    <div class="subtitle">Smart volume generator &middot; Small TP/SL &middot; Auto coin selection</div>
+  </div>
+  <div class="status-bar">
+    <div class="status-dot inactive" id="statusDot"></div>
+    <span style="font-size:13px;color:#8b949e" id="statusText">Offline</span>
+  </div>
+</div>
+
+<div class="container">
+  <div class="warning-box">
+    <span>&#9888;</span>
+    <div><strong>Security:</strong> API key stored only in your browser. Never sent anywhere except Binance. Enable <strong>Futures trading only</strong> on API key — disable withdrawals.</div>
+  </div>
+
+  <div class="grid-top">
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div class="card">
+        <h3>&#128272; API Config</h3>
+        <div class="form-row"><label>API Key</label><input type="password" id="apiKey" placeholder="Your Binance API Key"></div>
+        <div class="form-row"><label>Secret Key</label><input type="password" id="secretKey" placeholder="Your Secret Key"></div>
+        <div class="form-row"><label>Environment</label>
+          <select id="envSelect">
+            <option value="mainnet">Mainnet (Real Money)</option>
+            <option value="testnet">Testnet (Demo)</option>
+          </select>
+        </div>
+        <div class="ip-box">
+          <div><div class="ip-label">Your Public IP (whitelist this)</div><div class="ip-val" id="ipDisplay">Loading...</div></div>
+          <button class="copy-btn" onclick="copyIP()">Copy</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>&#9881; Bot Settings</h3>
+        <div class="form-row"><label>Capital (USDT)</label><input type="number" id="capital" value="5" min="1" max="1000" step="0.5"></div>
+        <div class="form-row"><label>Leverage</label>
+          <select id="leverage">
+            <option value="5">5x</option><option value="10" selected>10x</option>
+            <option value="15">15x</option><option value="20">20x</option><option value="50">50x</option>
+          </select>
+        </div>
+        <div class="form-row"><label>Take Profit $</label><input type="number" id="tp" value="0.5" min="0.01" max="100" step="0.01"></div>
+        <div class="form-row"><label>Stop Loss $</label><input type="number" id="sl" value="0.05" min="0.01" max="50" step="0.01"></div>
+        <div class="form-row"><label>Exit Mode</label>
+          <select id="exitMode" onchange="document.getElementById('timeoutRow').style.display = this.value === 'timeout' ? 'block' : 'none';">
+            <option value="sl" selected>Stop Loss / Take Profit</option>
+            <option value="timeout">Auto Close After Timeout</option>
+          </select>
+        </div>
+        <div class="form-row" id="timeoutRow" style="display:none;"><label>Timeout (seconds)</label><input type="number" id="timeoutSec" value="180" min="30" max="600" step="10"></div>
+        <div class="form-row"><label>Trade Interval (seconds)</label><input type="number" id="interval" value="60" min="30" max="600" step="10"></div>
+        <div class="form-row"><label>Max Open Positions</label>
+          <select id="maxPos">
+            <option value="1" selected>1 at a time</option>
+            <option value="2">2 at a time</option>
+            <option value="3">3 at a time</option>
+          </select>
+        </div>
+
+        <div style="border-top:1px solid #30363d;margin:14px 0 10px"></div>
+        <div style="font-size:11px;font-weight:600;color:#8b949e;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px">&#127919; Coin Mode</div>
+        <div style="display:flex;gap:6px;margin-bottom:10px">
+          <button id="modeAutoBtn" onclick="setCoinMode('auto')" style="flex:1;padding:7px 0;border-radius:7px;border:1px solid #f0b90b;background:#f0b90b22;color:#f0b90b;font-size:12px;font-weight:600;cursor:pointer">&#128200; Auto Select</button>
+          <button id="modeCustomBtn" onclick="setCoinMode('custom')" style="flex:1;padding:7px 0;border-radius:7px;border:1px solid #30363d;background:transparent;color:#8b949e;font-size:12px;font-weight:600;cursor:pointer">&#128221; Custom Coins</button>
+        </div>
+
+        <div id="customCoinRow" style="display:none">
+          <div style="font-size:11px;color:#8b949e;margin-bottom:8px">Coins add karo — bot analyze karke best mein entry lega</div>
+          <div style="display:flex;gap:6px;margin-bottom:8px">
+            <input type="text" id="customCoinInput" placeholder="e.g. NIGHT, PEPE, WIF"
+              style="flex:1;background:#0d1117;border:1px solid #30363d;border-radius:6px;color:#e6edf3;padding:7px 10px;font-size:13px;outline:none;text-transform:uppercase"
+              oninput="this.value=this.value.toUpperCase()"
+              onkeydown="if(event.key==='Enter')addCustomCoin()">
+            <button onclick="addCustomCoin()"
+              style="padding:7px 14px;border-radius:6px;border:1px solid #3fb95066;background:#3fb95016;color:#3fb950;font-size:13px;font-weight:600;cursor:pointer">+ Add</button>
+          </div>
+          <div id="customCoinsList" style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:6px;min-height:28px"></div>
+          <div id="customCoinStatus" style="font-size:11px;margin-top:4px;color:#8b949e;min-height:16px"></div>
+        </div>
+
+        <button class="btn btn-start" id="startBtn" onclick="startBot()">&#9654; Start Bot</button>
+        <button class="btn btn-stop" id="stopBtn" onclick="stopBot()" style="display:none">&#9632; Stop Bot</button>
+        <div style="margin-top:8px;border-top:1px solid #30363d;padding-top:8px"></div>
+        <button id="closeAllBtn" onclick="closeAllPositions()" style="width:100%;padding:9px;border-radius:8px;border:1px solid #f8514966;background:#f8514916;color:#f85149;font-size:13px;font-weight:600;cursor:pointer;margin-top:4px">&#10007; Close All Positions</button>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div class="card" style="padding:14px 16px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <h3 style="margin:0">&#128176; Account Balance</h3>
+          <button onclick="fetchAccountBalance()" id="refreshBalBtn" style="background:#21262d;border:1px solid #30363d;color:#8b949e;padding:4px 10px;border-radius:5px;font-size:11px;cursor:pointer">&#8635; Refresh</button>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
+          <div class="stat"><div class="label">USDT Balance</div><div class="value yellow" id="balUsdt">--</div></div>
+          <div class="stat"><div class="label">Available</div><div class="value green" id="balAvail">--</div></div>
+          <div class="stat"><div class="label">Unrealized PnL</div><div class="value green" id="balUnpnl">--</div></div>
+          <div class="stat"><div class="label">Margin Used</div><div class="value blue" id="balMargin">--</div></div>
+        </div>
+      </div>
+
+      <div class="stat-grid">
+        <div class="stat"><div class="label">Session Volume</div><div class="value yellow" id="totalVol">$0.00</div></div>
+        <div class="stat"><div class="label">Total Trades</div><div class="value blue" id="totalTrades">0</div></div>
+        <div class="stat"><div class="label">Session PnL</div><div class="value green" id="totalPnl">$0.00</div></div>
+        <div class="stat"><div class="label">Win Rate</div><div class="value green" id="winRate">0%</div></div>
+      </div>
+
+      <div class="card" style="flex:1">
+        <h3>&#128200; Pair Analysis</h3>
+        <div id="pairModeInfo" style="font-size:11px;color:#8b949e;margin-bottom:10px">Auto-ranked by trend strength + low volatility.</div>
+        <div class="pairs-grid" id="pairsGrid">
+          <div style="color:#8b949e;font-size:12px;grid-column:span 3;text-align:center;padding:20px">Loading pairs...</div>
+        </div>
+        <div style="margin-top:8px">
+          <div class="progress-row">
+            <div class="progress-label" style="font-size:11px;color:#8b949e">Session volume</div>
+            <div class="progress-bar"><div class="progress-fill" id="volProg" style="width:0%"></div></div>
+            <div class="progress-val" id="volProgVal">$0</div>
+          </div>
+          <div class="progress-row">
+            <div class="progress-label" style="font-size:11px;color:#8b949e">Trades today</div>
+            <div class="progress-bar"><div class="progress-fill" id="tradeProg" style="width:0%;background:#58a6ff"></div></div>
+            <div class="progress-val" id="tradeProgVal">0</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+    <div class="card">
+      <h3>&#128241; Activity Log</h3>
+      <div class="log-box" id="logBox">
+        <div class="log-entry"><span class="log-time">--:--:--</span><span class="log-info">Bot ready. Configure API and press Start.</span></div>
+      </div>
+    </div>
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <h3 style="margin:0">&#9889; Live Positions (Binance)</h3>
+        <div style="display:flex;align-items:center;gap:8px">
+          <div id="posDot" style="width:7px;height:7px;border-radius:50%;background:#6e7681"></div>
+          <button onclick="fetchLivePositions()" style="background:#21262d;border:1px solid #30363d;color:#8b949e;padding:4px 10px;border-radius:5px;font-size:11px;cursor:pointer">&#8635; Refresh</button>
+        </div>
+      </div>
+      <div style="overflow-x:auto;max-height:290px;overflow-y:auto">
+        <table class="trades-table">
+          <thead><tr><th>Pair</th><th>Side</th><th>Size</th><th>Entry</th><th>Mark</th><th>Unr. PnL</th><th>Liq.</th><th>Action</th></tr></thead>
+          <tbody id="livePositionsBody">
+            <tr><td colspan="8" style="color:#8b949e;text-align:center;padding:20px">Press Refresh to load</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr;gap:16px">
+    <div class="card">
+      <h3>&#128196; Trade History (This Session)</h3>
+      <div style="overflow-x:auto;max-height:260px;overflow-y:auto">
+        <table class="trades-table">
+          <thead><tr><th>Pair</th><th>Side</th><th>Entry</th><th>Exit</th><th>PnL</th><th>Status</th><th>Action</th></tr></thead>
+          <tbody id="tradesBody">
+            <tr><td colspan="7" style="color:#8b949e;text-align:center;padding:20px">No trades yet</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+var botRunning = false;
+var botTimer = null;
+var monitorTimer = null;
+var openPositions = [];
+var trades = [];
+var totalVolume = 0;
+var totalPnl = 0;
+var wins = 0;
+var customCoinMode = false;
+var customCoins = [];        // array of verified symbols e.g. ['NIGHTUSDT','PEPEUSDT']
+var pairScores = {};
+var pairPrices = {};
+
+var symbolStepSizes = {}; // cache: symbol -> stepSize from Binance
+
+// Fetch stepSize for a symbol from Binance exchangeInfo
+async function getStepSize(symbol) {
+  if (symbolStepSizes[symbol]) return symbolStepSizes[symbol];
+  try {
+    var res = await fetch('https://fapi.binance.com/fapi/v1/exchangeInfo');
+    var data = await res.json();
+    data.symbols.forEach(function(s) {
+      var qf = s.filters.find(function(f) { return f.filterType === 'LOT_SIZE'; });
+      if (qf) symbolStepSizes[s.symbol] = parseFloat(qf.stepSize);
+    });
+    return symbolStepSizes[symbol] || 1;
+  } catch(e) {
+    return 1; // fallback
+  }
+}
+
+// Round qty to correct step size
+function roundToStep(qty, stepSize) {
+  if (!stepSize || stepSize <= 0) return qty;
+  var precision = Math.round(-Math.log10(stepSize));
+  var rounded = Math.floor(qty / stepSize) * stepSize;
+  return parseFloat(rounded.toFixed(Math.max(0, precision)));
+}
+
+var CANDIDATE_PAIRS = [
+  'BNBUSDT','SOLUSDT','XRPUSDT','DOGEUSDT','ADAUSDT',
+  'AVAXUSDT','LINKUSDT','DOTUSDT','MATICUSDT','LTCUSDT',
+  'ATOMUSDT','NEARUSDT','UNIUSDT'
+];
+
+// ── IP ───────────────────────────────────────────────────────────────────────
+async function fetchIP() {
+  try {
+    var r = await fetch('https://api.ipify.org?format=json');
+    var d = await r.json();
+    document.getElementById('ipDisplay').textContent = d.ip;
+  } catch(e) {
+    try {
+      var r2 = await fetch('https://api64.ipify.org?format=json');
+      var d2 = await r2.json();
+      document.getElementById('ipDisplay').textContent = d2.ip;
+    } catch(e2) { document.getElementById('ipDisplay').textContent = 'Could not fetch'; }
+  }
+}
+fetchIP();
+
+function copyIP() {
+  var ip = document.getElementById('ipDisplay').textContent;
+  navigator.clipboard.writeText(ip).then(function() {
+    var btn = document.querySelector('.copy-btn');
+    btn.textContent = 'Copied!';
+    setTimeout(function() { btn.textContent = 'Copy'; }, 1500);
+  });
+}
+
+// ── Binance API ──────────────────────────────────────────────────────────────
+function getBase() {
+  return document.getElementById('envSelect').value === 'testnet'
+    ? 'https://demo-fapi.binance.com' : 'https://fapi.binance.com';
+}
+
+async function hmacSha256(secret, message) {
+  var enc = new TextEncoder();
+  var key = await crypto.subtle.importKey('raw', enc.encode(secret), {name:'HMAC',hash:'SHA-256'}, false, ['sign']);
+  var sig = await crypto.subtle.sign('HMAC', key, enc.encode(message));
+  return Array.from(new Uint8Array(sig)).map(function(b) { return b.toString(16).padStart(2,'0'); }).join('');
+}
+
+async function signedRequest(method, path, params) {
+  params = params || {};
+  var apiKey = document.getElementById('apiKey').value.trim();
+  var secretKey = document.getElementById('secretKey').value.trim();
+  if (!apiKey || !secretKey) throw new Error('API key and secret required');
+  params.timestamp = Date.now();
+  params.recvWindow = 5000;
+  var qs = Object.entries(params).map(function(e) { return e[0] + '=' + e[1]; }).join('&');
+  var sig = await hmacSha256(secretKey, qs);
+  var headers = { 'X-MBX-APIKEY': apiKey, 'User-Agent': 'binance-derivatives-trading-usds-futures/1.0.0 (Skill)' };
+  var url, opts;
+  if (method === 'GET' || method === 'DELETE') {
+    url = getBase() + path + '?' + qs + '&signature=' + sig;
+    opts = { method: method, headers: headers };
+  } else {
+    url = getBase() + path;
+    headers['Content-Type'] = 'application/x-www-form-urlencoded';
+    opts = { method: method, headers: headers, body: qs + '&signature=' + sig };
+  }
+  var res = await fetch(url, opts);
+  var data = await res.json();
+  if (data.code && data.code < 0) throw new Error('[' + data.code + '] ' + data.msg);
+  return data;
+}
+
+// ── Account Balance ──────────────────────────────────────────────────────────
+async function fetchAccountBalance() {
+  var apiKey = document.getElementById('apiKey').value.trim();
+  if (!apiKey) return;
+  var btn = document.getElementById('refreshBalBtn');
+  if (btn) { btn.textContent = '...'; btn.disabled = true; }
+  try {
+    var balances = await signedRequest('GET', '/fapi/v3/balance');
+    var usdt = balances.find(function(b) { return b.asset === 'USDT'; });
+    if (usdt) {
+      var wb = parseFloat(usdt.balance);
+      var avail = parseFloat(usdt.availableBalance);
+      var unpnl = parseFloat(usdt.crossUnPnl);
+      document.getElementById('balUsdt').textContent = '$' + wb.toFixed(2);
+      document.getElementById('balAvail').textContent = '$' + avail.toFixed(2);
+      var unpnlEl = document.getElementById('balUnpnl');
+      unpnlEl.textContent = (unpnl >= 0 ? '+' : '') + '$' + unpnl.toFixed(4);
+      unpnlEl.className = 'value ' + (unpnl >= 0 ? 'green' : 'red');
+      document.getElementById('balMargin').textContent = '$' + (wb - avail).toFixed(2);
+    }
+  } catch(e) { log('warn', 'Balance fetch failed: ' + e.message); }
+  if (btn) { btn.textContent = '\u21bb Refresh'; btn.disabled = false; }
+}
+
+// ── Live Positions ───────────────────────────────────────────────────────────
+async function fetchLivePositions() {
+  var apiKey = document.getElementById('apiKey').value.trim();
+  if (!apiKey) return;
+  var dot = document.getElementById('posDot');
+  try {
+    var positions = await signedRequest('GET', '/fapi/v3/positionRisk');
+    var active = positions.filter(function(p) { return Math.abs(parseFloat(p.positionAmt)) > 0; });
+    var tbody = document.getElementById('livePositionsBody');
+    if (active.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="8" style="color:#8b949e;text-align:center;padding:16px">No open positions</td></tr>';
+      dot.style.background = '#6e7681'; return;
+    }
+    dot.style.background = '#3fb950';
+    var html = '';
+    active.forEach(function(p) {
+      var amt = parseFloat(p.positionAmt);
+      var side = amt > 0 ? 'LONG' : 'SHORT';
+      var sc = amt > 0 ? 'badge-long' : 'badge-short';
+      var entry = parseFloat(p.entryPrice);
+      var mark = parseFloat(p.markPrice);
+      var unpnl = parseFloat(p.unRealizedProfit);
+      var liq = parseFloat(p.liquidationPrice);
+      var pc = unpnl >= 0 ? '#3fb950' : '#f85149';
+      var sid = p.symbol.replace(/[^A-Z0-9]/g, '');
+      html += '<tr id="lr-' + sid + '">'
+        + '<td style="font-weight:600">' + p.symbol.replace('USDT','') + '/USDT</td>'
+        + '<td><span class="' + sc + '">' + side + '</span></td>'
+        + '<td>' + Math.abs(amt) + '</td>'
+        + '<td>$' + entry.toFixed(4) + '</td>'
+        + '<td>$' + mark.toFixed(4) + '</td>'
+        + '<td style="color:' + pc + ';font-weight:600">' + (unpnl >= 0 ? '+' : '') + '$' + unpnl.toFixed(4) + '</td>'
+        + '<td style="color:#f85149;font-size:11px">$' + (liq > 0 ? liq.toFixed(2) : '--') + '</td>'
+        + '<td><button id="lb-' + sid + '" style="background:#f8514922;border:1px solid #f8514966;color:#f85149;padding:3px 10px;border-radius:5px;font-size:11px;cursor:pointer;font-weight:600">x Close</button></td>'
+        + '</tr>';
+    });
+    tbody.innerHTML = html;
+    active.forEach(function(p) {
+      var amt = parseFloat(p.positionAmt);
+      var cs = amt > 0 ? 'SELL' : 'BUY';
+      var sz = Math.abs(amt);
+      var sid = p.symbol.replace(/[^A-Z0-9]/g, '');
+      var sym = p.symbol;
+      var btn = document.getElementById('lb-' + sid);
+      if (btn) btn.addEventListener('click', function() {
+        btn.textContent = 'Closing...'; btn.disabled = true;
+        closePosition(sym, cs, sz);
+      });
+    });
+  } catch(e) { log('warn', 'Live positions failed: ' + e.message); dot.style.background = '#f85149'; }
+}
+
+// ── Close Position ───────────────────────────────────────────────────────────
+async function closePosition(symbol, closeSide, qty) {
+  var pos = openPositions.find(function(p) { return p.symbol === symbol; });
+  if (!closeSide || !qty) {
+    if (!pos) { log('warn', 'Position not found: ' + symbol); return; }
+    closeSide = pos.side === 'BUY' ? 'SELL' : 'BUY';
+    qty = pos.qty;
+  }
+  log('warn', 'Closing ' + symbol + ' | ' + closeSide + ' qty:' + qty);
+  try {
+    try { await signedRequest('DELETE', '/fapi/v1/allOpenOrders', { symbol: symbol }); } catch(e) {}
+    var order = await signedRequest('POST', '/fapi/v1/order', {
+      symbol: symbol, side: closeSide, type: 'MARKET', quantity: qty,
+      reduceOnly: 'true',
+      newClientOrderId: 'agent-close-' + Math.random().toString(36).substr(2, 12),
+      newOrderRespType: 'RESULT'
+    });
+    var exitPrice = parseFloat(order.avgPrice || 0);
+    log('buy', 'Closed ' + symbol + ' | $' + exitPrice.toFixed(4));
+    if (pos) {
+      var pnl = pos.side === 'BUY' ? (exitPrice - pos.entry) * pos.qty : (pos.entry - exitPrice) * pos.qty;
+      totalPnl += pnl; if (pnl >= 0) wins++;
+      trades.push(Object.assign({}, pos, { exit: exitPrice, pnl: pnl, status: 'CLOSED' }));
+      openPositions.splice(openPositions.findIndex(function(p) { return p.symbol === symbol; }), 1);
+      log(pnl >= 0 ? 'buy' : 'sell', 'PnL: ' + (pnl >= 0 ? '+' : '') + '$' + pnl.toFixed(4));
+    }
+    updateStats(); refreshTradesTable(); renderPairs();
+    setTimeout(function() { fetchLivePositions(); fetchAccountBalance(); }, 1200);
+  } catch(e) { log('warn', 'Close failed: ' + e.message); fetchLivePositions(); }
+}
+
+// ── Close All ────────────────────────────────────────────────────────────────
+async function closeAllPositions() {
+  try {
+    var positions = await signedRequest('GET', '/fapi/v3/positionRisk');
+    var active = positions.filter(function(p) { return Math.abs(parseFloat(p.positionAmt)) > 0; });
+    if (active.length === 0) { log('warn', 'No open positions'); return; }
+    if (!confirm('Close ALL ' + active.length + ' position(s)?')) return;
+    for (var i = 0; i < active.length; i++) {
+      var p = active[i];
+      var amt = parseFloat(p.positionAmt);
+      await closePosition(p.symbol, amt > 0 ? 'SELL' : 'BUY', Math.abs(amt));
+      await new Promise(function(r) { setTimeout(r, 600); });
+    }
+    log('info', 'All positions closed');
+  } catch(e) { log('warn', 'closeAll error: ' + e.message); }
+}
+
+// ── Coin Mode ────────────────────────────────────────────────────────────────
+function setCoinMode(mode) {
+  customCoinMode = (mode === 'custom');
+  var ab = document.getElementById('modeAutoBtn');
+  var cb = document.getElementById('modeCustomBtn');
+  var cr = document.getElementById('customCoinRow');
+  var pi = document.getElementById('pairModeInfo');
+  if (customCoinMode) {
+    ab.style.cssText = 'flex:1;padding:7px 0;border-radius:7px;border:1px solid #30363d;background:transparent;color:#8b949e;font-size:12px;font-weight:600;cursor:pointer';
+    cb.style.cssText = 'flex:1;padding:7px 0;border-radius:7px;border:1px solid #58a6ff;background:#58a6ff22;color:#58a6ff;font-size:12px;font-weight:600;cursor:pointer';
+    cr.style.display = 'block';
+    updateCustomModeInfo();
+  } else {
+    ab.style.cssText = 'flex:1;padding:7px 0;border-radius:7px;border:1px solid #f0b90b;background:#f0b90b22;color:#f0b90b;font-size:12px;font-weight:600;cursor:pointer';
+    cb.style.cssText = 'flex:1;padding:7px 0;border-radius:7px;border:1px solid #30363d;background:transparent;color:#8b949e;font-size:12px;font-weight:600;cursor:pointer';
+    cr.style.display = 'none';
+    pi.textContent = 'Auto-ranked by trend strength + low volatility.';
+    pi.style.color = '#8b949e';
+    fetchPricesAndScore();
+  }
+}
+
+function updateCustomModeInfo() {
+  var pi = document.getElementById('pairModeInfo');
+  if (customCoins.length === 0) {
+    pi.textContent = 'Custom mode: Koi coin nahi — upar coin add karo.';
+    pi.style.color = '#f0b90b';
+  } else {
+    pi.textContent = 'Custom mode (' + customCoins.length + ' coins): ' + customCoins.map(function(s){ return s.replace('USDT',''); }).join(', ') + ' — analyze karke best mein entry.';
+    pi.style.color = '#58a6ff';
+  }
+}
+
+// ── Add / Remove Custom Coin ─────────────────────────────────────────────────
+async function addCustomCoin() {
+  var inp = document.getElementById('customCoinInput');
+  var raw = inp.value.trim().toUpperCase();
+  if (!raw) return;
+  var sym = raw.endsWith('USDT') ? raw : raw + 'USDT';
+  if (customCoins.indexOf(sym) !== -1) {
+    setCoinStatus(sym + ' already in list', '#f0b90b'); return;
+  }
+  setCoinStatus('Checking ' + sym + '...', '#8b949e');
+  try {
+    var res = await fetch('https://fapi.binance.com/fapi/v1/ticker/24hr?symbol=' + sym);
+    var data = await res.json();
+    if (data.code) {
+      setCoinStatus(sym + ' — Binance Futures pe nahi mila', '#f85149'); return;
+    }
+    customCoins.push(sym);
+    inp.value = '';
+    var price = parseFloat(data.lastPrice);
+    var chg = parseFloat(data.priceChangePercent);
+    setCoinStatus('Added ' + sym + ' | $' + price.toFixed(4) + ' | ' + (chg >= 0 ? '+' : '') + chg.toFixed(2) + '%', '#3fb950');
+    renderCustomCoinTags();
+    updateCustomModeInfo();
+    fetchPricesAndScore();
+  } catch(e) { setCoinStatus('Error: ' + e.message, '#f85149'); }
+}
+
+function removeCustomCoin(sym) {
+  customCoins = customCoins.filter(function(c) { return c !== sym; });
+  renderCustomCoinTags();
+  updateCustomModeInfo();
+  fetchPricesAndScore();
+}
+
+function setCoinStatus(msg, color) {
+  var el = document.getElementById('customCoinStatus');
+  el.textContent = msg; el.style.color = color;
+}
+
+function renderCustomCoinTags() {
+  var el = document.getElementById('customCoinsList');
+  if (customCoins.length === 0) {
+    el.innerHTML = '<span style="font-size:11px;color:#8b949e;padding:4px 0">No coins yet</span>';
+    return;
+  }
+  el.innerHTML = customCoins.map(function(sym) {
+    var safeId = sym.replace(/[^A-Z0-9]/g, '');
+    return '<div style="display:inline-flex;align-items:center;gap:4px;background:#58a6ff16;border:1px solid #58a6ff44;border-radius:20px;padding:3px 10px 3px 8px">'
+      + '<span style="font-size:12px;font-weight:600;color:#58a6ff">' + sym.replace('USDT','') + '</span>'
+      + '<button id="rmcoin-' + safeId + '" style="background:none;border:none;color:#8b949e;cursor:pointer;font-size:14px;line-height:1;padding:0 0 0 2px">&times;</button>'
+      + '</div>';
+  }).join('');
+  // Attach remove handlers
+  customCoins.forEach(function(sym) {
+    var safeId = sym.replace(/[^A-Z0-9]/g, '');
+    var btn = document.getElementById('rmcoin-' + safeId);
+    if (btn) btn.addEventListener('click', function() { removeCustomCoin(sym); });
+  });
+}
+
+// ── Price + Score Fetch ───────────────────────────────────────────────────────
+async function fetchPricesAndScore() {
+  // Determine which symbols to fetch
+  var symsToFetch = customCoinMode ? customCoins : CANDIDATE_PAIRS;
+  if (symsToFetch.length === 0) return;
+
+  try {
+    // Fetch all futures tickers in one call
+    var res = await fetch('https://fapi.binance.com/fapi/v1/ticker/24hr');
+    var allTickers = await res.json();
+
+    pairScores = {}; pairPrices = {};
+
+    symsToFetch.forEach(function(sym) {
+      var t = allTickers.find(function(x) { return x.symbol === sym; });
+      if (!t) return;
+      var chg = parseFloat(t.priceChangePercent);
+      var vol = parseFloat(t.quoteVolume);
+      var price = parseFloat(t.lastPrice);
+      pairPrices[sym] = price;
+
+      var trendScore  = Math.min(Math.abs(chg) / 2, 1) * 40;
+      var volScore    = Math.min(vol / 1e9, 1) * 30;
+      var stabScore   = Math.abs(chg) < 3 ? 30 : Math.max(0, 30 - (Math.abs(chg) - 3));
+      pairScores[sym] = {
+        score: trendScore + volScore + stabScore,
+        chg: chg, vol: vol, price: price,
+        direction: chg >= 0 ? 'LONG' : 'SHORT'
+      };
+    });
+    renderPairs();
+  } catch(e) { log('warn', 'Price fetch error: ' + e.message); }
+}
+
+// ── Render Pairs Grid ─────────────────────────────────────────────────────────
+function renderPairs() {
+  var grid = document.getElementById('pairsGrid');
+  var sorted = Object.entries(pairScores).sort(function(a,b) { return b[1].score - a[1].score; }).slice(0, 9);
+  var maxScore = sorted[0] ? sorted[0][1].score : 100;
+  if (sorted.length === 0) {
+    grid.innerHTML = '<div style="color:#8b949e;font-size:12px;grid-column:span 3;text-align:center;padding:20px">No coins loaded</div>';
+    return;
+  }
+  grid.innerHTML = sorted.map(function(entry, i) {
+    var sym = entry[0]; var s = entry[1];
+    var isTrading = openPositions.find(function(p) { return p.symbol === sym; });
+    var pct = (s.score / maxScore * 100).toFixed(0);
+    var cc = s.chg >= 0 ? '#3fb950' : '#f85149';
+    var bc = s.score > 70 ? '#3fb950' : s.score > 40 ? '#f0b90b' : '#f85149';
+    return '<div class="pair-card ' + (isTrading ? 'trading' : i === 0 ? 'selected' : '') + '">'
+      + (i === 0 ? '<div class="badge badge-hot">BEST</div>' : '')
+      + (isTrading ? '<div class="badge badge-live">LIVE</div>' : '')
+      + '<div class="sym">' + sym.replace('USDT','') + '/USDT</div>'
+      + '<div class="px">$' + formatPrice(s.price) + '</div>'
+      + '<div class="chg" style="color:' + cc + '">' + (s.chg >= 0 ? '+' : '') + s.chg.toFixed(2) + '%</div>'
+      + '<div style="font-size:10px;color:#8b949e;margin-top:2px">Score: ' + s.score.toFixed(0) + '</div>'
+      + '<div class="score-bar"><div class="score-fill" style="width:' + pct + '%;background:' + bc + '"></div></div>'
+      + '</div>';
+  }).join('');
+}
+
+function formatStopPrice(p) {
+  // Use enough decimals based on price magnitude
+  if (p >= 1000) return p.toFixed(1);
+  if (p >= 100)  return p.toFixed(2);
+  if (p >= 1)    return p.toFixed(4);
+  if (p >= 0.01) return p.toFixed(5);
+  return p.toFixed(6);
+}
+
+function formatPrice(p) {
+  if (p >= 1000) return p.toFixed(1);
+  if (p >= 1) return p.toFixed(3);
+  return p.toFixed(5);
+}
+
+// ── Get Best Pair ─────────────────────────────────────────────────────────────
+// ── Score a single coin in realtime ──────────────────────────────────────────
+async function scoreCoinLive(sym) {
+  try {
+    // Fetch last 10 candles (1min) + 24hr ticker in parallel
+    var [tickRes, klineRes] = await Promise.all([
+      fetch('https://fapi.binance.com/fapi/v1/ticker/24hr?symbol=' + sym),
+      fetch('https://fapi.binance.com/fapi/v1/klines?symbol=' + sym + '&interval=1m&limit=10')
+    ]);
+    var t = await tickRes.json();
+    var klines = await klineRes.json();
+    if (t.code || !Array.isArray(klines) || klines.length < 5) return null;
+
+    var price = parseFloat(t.lastPrice);
+    var chg24 = parseFloat(t.priceChangePercent);
+
+    // ── Short-term momentum (last 5 candles) ──
+    // Each kline: [openTime, open, high, low, close, volume, ...]
+    var recent = klines.slice(-5);
+    var closes = recent.map(function(k) { return parseFloat(k[4]); });
+    var opens  = recent.map(function(k) { return parseFloat(k[1]); });
+    var vols   = recent.map(function(k) { return parseFloat(k[5]); });
+
+    // How many candles are green vs red
+    var greenCount = 0;
+    var redCount = 0;
+    var totalMove = 0;
+    for (var i = 0; i < closes.length; i++) {
+      var candleMove = (closes[i] - opens[i]) / opens[i] * 100;
+      totalMove += candleMove;
+      if (closes[i] > opens[i]) greenCount++;
+      else redCount++;
+    }
+
+    // Price change over last 5 minutes
+    var move5m = closes.length >= 2
+      ? (closes[closes.length-1] - closes[0]) / closes[0] * 100
+      : 0;
+
+    // Volume spike: last candle vs avg of previous 4
+    var lastVol = vols[vols.length - 1];
+    var avgPrevVol = (vols.slice(0,-1).reduce(function(a,b){return a+b;},0)) / (vols.length - 1);
+    var volSpike = avgPrevVol > 0 ? lastVol / avgPrevVol : 1;
+
+    // ── Scoring (0-100) ──
+    // 1. Short momentum: how much moved in 5 mins (max 40 pts)
+    var momentumScore = Math.min(Math.abs(move5m) / 0.5, 1) * 40;
+
+    // 2. Candle consistency: all green or all red = more reliable (max 30 pts)
+    var consistency = Math.max(greenCount, redCount); // 3,4,5 out of 5
+    var consistencyScore = ((consistency - 2) / 3) * 30; // 3=10, 4=20, 5=30
+
+    // 3. Volume spike on latest candle (max 30 pts)
+    var volSpikeScore = Math.min((volSpike - 1) / 2, 1) * 30; // 2x spike = 15, 3x = 30
+
+    var score = momentumScore + consistencyScore + volSpikeScore;
+
+    // Direction: follow short-term momentum, not 24h change
+    var direction = move5m >= 0 ? 'LONG' : 'SHORT';
+    // If candles are clearly one-sided, override
+    if (greenCount >= 4) direction = 'LONG';
+    if (redCount >= 4) direction = 'SHORT';
+
+    return {
+      symbol: sym,
+      score: score,
+      chg: chg24,
+      move5m: move5m,
+      greenCount: greenCount,
+      redCount: redCount,
+      volSpike: volSpike,
+      price: price,
+      direction: direction
+    };
+  } catch(e) { return null; }
+}
+
+// ── Trade Execution ───────────────────────────────────────────────────────────
+async function executeTrade() {
+  var maxPos = parseInt(document.getElementById('maxPos').value);
+
+  // In custom mode: try to trade EACH coin that has no open position
+  // (up to maxPos total open at once)
+  if (customCoinMode && customCoins.length > 0) {
+    // Find custom coins with no open position
+    var needTrade = customCoins.filter(function(sym) {
+      return !openPositions.find(function(p) { return p.symbol === sym; });
+    });
+    if (needTrade.length === 0) {
+      log('info', 'All custom coins have open positions, waiting...');
+      return;
+    }
+
+    // Score all of them LIVE right now in parallel
+    log('info', 'Analyzing ' + needTrade.length + ' custom coin(s) live...');
+    var scored = await Promise.all(needTrade.map(scoreCoinLive));
+    scored = scored.filter(function(s) { return s !== null; });
+    if (scored.length === 0) { log('warn', 'Could not score coins'); return; }
+
+    // Update pairScores for display
+    scored.forEach(function(s) {
+      pairScores[s.symbol] = s;
+      pairPrices[s.symbol] = s.price;
+    });
+    renderPairs();
+
+    // Log scores for all
+    var scoreLog = scored.map(function(s) {
+      var dir = s.direction === 'LONG' ? '▲' : '▼';
+      var green = s.greenCount !== undefined ? s.greenCount + 'G/' + s.redCount + 'R' : '';
+      var spike = s.volSpike !== undefined ? ' vol:' + s.volSpike.toFixed(1) + 'x' : '';
+      var mv = s.move5m !== undefined ? ' 5m:' + (s.move5m >= 0 ? '+' : '') + s.move5m.toFixed(3) + '%' : '';
+      return s.symbol.replace('USDT','') + ' ' + dir + ' score:' + s.score.toFixed(0) + mv + ' [' + green + spike + ']';
+    }).join(' || ');
+    log('info', 'Analysis || ' + scoreLog);
+
+    // Sort by score — trade the best ones up to maxPos slots available
+    scored.sort(function(a, b) { return b.score - a.score; });
+    var slotsAvailable = maxPos - openPositions.length;
+    var toTrade = scored.slice(0, slotsAvailable);
+
+    for (var i = 0; i < toTrade.length; i++) {
+      var coin = toTrade[i];
+      log('info', 'Selected: ' + coin.symbol + ' | Score:' + coin.score.toFixed(1) + ' | ' + coin.direction);
+      await placeOrder(coin);
+      if (i < toTrade.length - 1) {
+        await new Promise(function(r) { setTimeout(r, 400); }); // small gap between orders
+      }
+    }
+    return;
+  }
+
+  // Auto mode: original logic
+  if (openPositions.length >= maxPos) {
+    log('info', 'Max positions (' + maxPos + ') reached, waiting...');
+    return;
+  }
+  await fetchPricesAndScore();
+
+  // Pick best scoring coin not already in a position
+  var candidates = Object.entries(pairScores).filter(function(e) {
+    return !openPositions.find(function(p) { return p.symbol === e[0]; });
+  });
+  if (candidates.length === 0) { log('warn', 'No pair available'); return; }
+  candidates.sort(function(a, b) { return b[1].score - a[1].score; });
+  var best = Object.assign({ symbol: candidates[0][0] }, candidates[0][1]);
+  log('info', 'Best: ' + best.symbol + ' Score:' + best.score.toFixed(1) + ' Dir:' + best.direction);
+  await placeOrder(best);
+}
+
+async function placeOrder(best) {
+
+  var capital = parseFloat(document.getElementById('capital').value);
+  var leverage = parseInt(document.getElementById('leverage').value);
+  var tpDelta = parseFloat(document.getElementById('tp').value);
+  var slDelta = parseFloat(document.getElementById('sl').value);
+  if (isNaN(tpDelta) || tpDelta < 0.5) tpDelta = 0.5;
+  if (isNaN(slDelta) || slDelta < 0.05) slDelta = 0.05;
+  var notional = capital * leverage;
+  var side = best.direction === 'LONG' ? 'BUY' : 'SELL';
+  var price = best.price;
+
+  // Qty precision
+  var rawQty = notional / price;
+  var stepSize = await getStepSize(best.symbol);
+  var qty = roundToStep(rawQty, stepSize);
+  if (qty <= 0) qty = stepSize;
+
+  log('info', 'Best: ' + best.symbol + ' Score:' + best.score.toFixed(1) + ' Dir:' + best.direction);
+  try {
+    await signedRequest('POST', '/fapi/v1/leverage', { symbol: best.symbol, leverage: leverage });
+    try { await signedRequest('POST', '/fapi/v1/marginType', { symbol: best.symbol, marginType: 'ISOLATED' }); } catch(e) {}
+
+    var order = await signedRequest('POST', '/fapi/v1/order', {
+      symbol: best.symbol, side: side, type: 'MARKET', quantity: qty,
+      newClientOrderId: 'agent-' + Math.random().toString(36).substr(2, 18),
+      newOrderRespType: 'RESULT'
+    });
+    var entryPrice = parseFloat(order.avgPrice || price);
+    var tpPrice = side === 'BUY' ? entryPrice + tpDelta : entryPrice - tpDelta;
+    var slPrice = side === 'BUY' ? entryPrice - slDelta : entryPrice + slDelta;
+
+    // Place TP
+    try {
+      await signedRequest('POST', '/fapi/v1/order', {
+        symbol: best.symbol, side: side === 'BUY' ? 'SELL' : 'BUY',
+        type: 'TAKE_PROFIT_MARKET', stopPrice: formatStopPrice(tpPrice), closePosition: 'true',
+        newClientOrderId: 'agent-tp-' + Math.random().toString(36).substr(2, 15),
+        workingType: 'MARK_PRICE', priceProtect: 'TRUE'
+      });
+    } catch(e) { log('warn', 'TP order failed: ' + e.message); }
+
+    // Place SL
+    try {
+      await signedRequest('POST', '/fapi/v1/order', {
+        symbol: best.symbol, side: side === 'BUY' ? 'SELL' : 'BUY',
+        type: 'STOP_MARKET', stopPrice: formatStopPrice(slPrice), closePosition: 'true',
+        newClientOrderId: 'agent-sl-' + Math.random().toString(36).substr(2, 15),
+        workingType: 'MARK_PRICE', priceProtect: 'TRUE'
+      });
+    } catch(e) { log('warn', 'SL order failed: ' + e.message); }
+
+    var pos = {
+      id: order.orderId, symbol: best.symbol, side: side, qty: qty,
+      entry: entryPrice, tp: tpPrice, sl: slPrice,
+      notional: notional, openTime: Date.now(), status: 'OPEN',
+      exitMode: document.getElementById('exitMode').value || 'sl',
+      timeoutSec: parseInt(document.getElementById('timeoutSec').value, 10) || 180
+    };
+    openPositions.push(pos);
+    totalVolume += notional;
+    log('buy', 'OPENED ' + side + ' ' + best.symbol + ' | Qty:' + qty + ' Entry:$' + entryPrice.toFixed(4) + ' TP:$' + tpPrice.toFixed(4) + ' SL:$' + slPrice.toFixed(4));
+    updateStats(); addTradeRow(pos);
+    fetchLivePositions(); fetchAccountBalance();
+  } catch(e) { log('warn', 'Trade failed: ' + e.message); }
+}
+
+// ── Monitor Positions ─────────────────────────────────────────────────────────
+async function monitorPositions() {
+  if (openPositions.length === 0) return;
+  try {
+    var positions = await signedRequest('GET', '/fapi/v2/positionRisk');
+    for (var i = openPositions.length - 1; i >= 0; i--) {
+      var pos = openPositions[i];
+      var live = positions.find(function(p) { return p.symbol === pos.symbol; });
+      if (!live) continue;
+
+      var markPrice = parseFloat(live.markPrice);
+      var elapsedMs = Date.now() - pos.openTime;
+      var timedOut = pos.exitMode === 'timeout' && elapsedMs >= (pos.timeoutSec || 180) * 1000;
+      var reachedSL = false;
+      var reachedTP = false;
+      if (pos.exitMode === 'sl') {
+        if (pos.side === 'BUY') {
+          reachedSL = markPrice <= pos.sl;
+          reachedTP = markPrice >= pos.tp;
+        } else {
+          reachedSL = markPrice >= pos.sl;
+          reachedTP = markPrice <= pos.tp;
+        }
+      }
+
+      if (timedOut) {
+        log('warn', 'Timeout triggered close for ' + pos.symbol + ' after ' + Math.round(elapsedMs/1000) + 's');
+        await closePosition(pos.symbol);
+        continue;
+      }
+
+      if (reachedSL || reachedTP) {
+        log('warn', (reachedTP ? 'TP' : 'SL') + ' reached for ' + pos.symbol + ' @ ' + markPrice.toFixed(4));
+        await closePosition(pos.symbol);
+        continue;
+      }
+
+      if (Math.abs(parseFloat(live.positionAmt)) < 0.0001) {
+        var realized = pos.side === 'BUY'
+          ? (markPrice - pos.entry) * pos.qty
+          : (pos.entry - markPrice) * pos.qty;
+        totalPnl += realized; if (realized >= 0) wins++;
+        trades.push(Object.assign({}, pos, { exit: markPrice, pnl: realized, status: 'CLOSED' }));
+        log(realized >= 0 ? 'buy' : 'sell', 'CLOSED ' + pos.symbol + ' | PnL: ' + (realized >= 0 ? '+' : '') + '$' + realized.toFixed(4));
+        openPositions.splice(i, 1);
+        updateStats(); refreshTradesTable();
+      }
+    }
+    renderPairs();
+  } catch(e) {}
+}
+
+// ── UI Helpers ────────────────────────────────────────────────────────────────
+function log(type, msg) {
+  var box = document.getElementById('logBox');
+  var time = new Date().toTimeString().slice(0,8);
+  var div = document.createElement('div');
+  div.className = 'log-entry';
+  var cm = { buy:'log-buy', sell:'log-sell', info:'log-info', warn:'log-warn' };
+  div.innerHTML = '<span class="log-time">' + time + '</span><span class="' + (cm[type]||'log-info') + '">' + msg + '</span>';
+  box.insertBefore(div, box.firstChild);
+  if (box.children.length > 200) box.removeChild(box.lastChild);
+}
+
+function updateStats() {
+  var tt = trades.length + openPositions.length;
+  document.getElementById('totalVol').textContent = '$' + totalVolume.toFixed(2);
+  document.getElementById('totalTrades').textContent = tt;
+  var pel = document.getElementById('totalPnl');
+  pel.textContent = (totalPnl >= 0 ? '+' : '') + '$' + totalPnl.toFixed(4);
+  pel.className = 'value ' + (totalPnl >= 0 ? 'green' : 'red');
+  var wr = trades.length > 0 ? ((wins / trades.length) * 100).toFixed(0) : 0;
+  document.getElementById('winRate').textContent = wr + '%';
+  document.getElementById('winRate').className = 'value ' + (wr >= 50 ? 'green' : 'red');
+  document.getElementById('volProg').style.width = Math.min(totalVolume / 1000 * 100, 100) + '%';
+  document.getElementById('volProgVal').textContent = '$' + totalVolume.toFixed(0);
+  document.getElementById('tradeProg').style.width = Math.min(tt / 50 * 100, 100) + '%';
+  document.getElementById('tradeProgVal').textContent = tt;
+}
+
+function tradeRowHTML(pos) {
+  var sc = pos.side === 'BUY' ? 'badge-long' : 'badge-short';
+  var sl = pos.side === 'BUY' ? 'LONG' : 'SHORT';
+  var stc = pos.status === 'OPEN' ? 'badge-open' : 'badge-closed';
+  var pnl = pos.pnl !== undefined
+    ? '<span style="color:' + (pos.pnl>=0?'#3fb950':'#f85149') + '">' + (pos.pnl>=0?'+':'') + '$' + pos.pnl.toFixed(4) + '</span>'
+    : '<span style="color:#8b949e">--</span>';
+  var action = pos.status === 'OPEN'
+    ? '<button data-sym="' + pos.symbol + '" class="hist-close-btn" style="background:#f8514922;border:1px solid #f8514944;color:#f85149;padding:2px 8px;border-radius:4px;font-size:10px;cursor:pointer;font-weight:600">Close</button>'
+    : '<span style="color:#8b949e;font-size:10px">--</span>';
+  return '<td>' + pos.symbol.replace('USDT','') + '</td>'
+       + '<td><span class="' + sc + '">' + sl + '</span></td>'
+       + '<td>$' + pos.entry.toFixed(4) + '</td>'
+       + '<td>' + (pos.exit ? '$' + pos.exit.toFixed(4) : '--') + '</td>'
+       + '<td>' + pnl + '</td>'
+       + '<td><span class="' + stc + '">' + pos.status + '</span></td>'
+       + '<td>' + action + '</td>';
+}
+
+function addTradeRow(pos) {
+  var tbody = document.getElementById('tradesBody');
+  if (tbody.querySelector('td[colspan]')) tbody.innerHTML = '';
+  var tr = document.createElement('tr');
+  tr.id = 'trade-' + pos.id;
+  tr.innerHTML = tradeRowHTML(pos);
+  tbody.insertBefore(tr, tbody.firstChild);
+  attachHistCloseBtn(tr, pos);
+}
+
+function attachHistCloseBtn(tr, pos) {
+  var btn = tr.querySelector('.hist-close-btn');
+  if (btn && pos.status === 'OPEN') {
+    btn.addEventListener('click', function() {
+      btn.textContent = 'Closing...'; btn.disabled = true;
+      closePosition(pos.symbol, pos.side === 'BUY' ? 'SELL' : 'BUY', pos.qty);
+    });
+  }
+}
+
+function refreshTradesTable() {
+  var tbody = document.getElementById('tradesBody');
+  tbody.innerHTML = '';
+  var all = openPositions.map(function(p) { return Object.assign({}, p); }).concat(trades).reverse();
+  if (all.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="7" style="color:#8b949e;text-align:center;padding:20px">No trades yet</td></tr>';
+    return;
+  }
+  all.forEach(function(t) {
+    var tr = document.createElement('tr');
+    tr.innerHTML = tradeRowHTML(t);
+    tbody.appendChild(tr);
+    attachHistCloseBtn(tr, t);
+  });
+}
+
+// ── Bot Control ───────────────────────────────────────────────────────────────
+async function startBot() {
+  var apiKey = document.getElementById('apiKey').value.trim();
+  var secretKey = document.getElementById('secretKey').value.trim();
+  if (!apiKey || !secretKey) { alert('API Key aur Secret Key enter karo!'); return; }
+  if (customCoinMode && customCoins.length === 0) { alert('Custom mode: kam se kam ek coin add karo!'); return; }
+  if (document.getElementById('envSelect').value === 'mainnet') {
+    if (!confirm('REAL MONEY trade hoga Mainnet pe!\n\nCapital: $' + document.getElementById('capital').value + ' USDT\n\nOK?')) return;
+  }
+  botRunning = true;
+  document.getElementById('startBtn').style.display = 'none';
+  document.getElementById('stopBtn').style.display = 'block';
+  document.getElementById('statusDot').className = 'status-dot';
+  document.getElementById('statusText').textContent = 'Running';
+  log('info', 'Bot started | $' + document.getElementById('capital').value + ' | ' + document.getElementById('leverage').value + 'x | TP:' + document.getElementById('tp').value + '% SL:' + document.getElementById('sl').value + '%');
+  fetchAccountBalance(); fetchLivePositions();
+  await fetchPricesAndScore();
+  await executeTrade();
+  var sec = parseInt(document.getElementById('interval').value);
+  botTimer = setInterval(async function() {
+    if (!botRunning) return;
+    await executeTrade();
+  }, sec * 1000);
+  monitorTimer = setInterval(async function() {
+    if (!botRunning) return;
+    await monitorPositions(); await fetchLivePositions(); await fetchAccountBalance();
+  }, 15000);
+}
+
+async function stopBot() {
+  botRunning = false;
+  clearInterval(botTimer); clearInterval(monitorTimer);
+  botTimer = null; monitorTimer = null;
+  document.getElementById('startBtn').style.display = 'block';
+  document.getElementById('stopBtn').style.display = 'none';
+  var closeAllBtn = document.getElementById('closeAllBtn'); if (closeAllBtn) closeAllBtn.style.display = 'none';
+  document.getElementById('statusDot').className = 'status-dot inactive';
+  document.getElementById('statusText').textContent = 'Stopped';
+  log('warn', 'Bot stopped. Positions on Binance until TP/SL hits.');
+  fetchAccountBalance(); fetchLivePositions();
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+// Prefetch all step sizes on load so first trade is instant
+(async function() {
+  try {
+    var res = await fetch('https://fapi.binance.com/fapi/v1/exchangeInfo');
+    var data = await res.json();
+    data.symbols.forEach(function(s) {
+      var qf = s.filters.find(function(f) { return f.filterType === 'LOT_SIZE'; });
+      if (qf) symbolStepSizes[s.symbol] = parseFloat(qf.stepSize);
+    });
+    log('info', 'Exchange info loaded — ' + Object.keys(symbolStepSizes).length + ' symbols');
+  } catch(e) { log('warn', 'Exchange info prefetch failed: ' + e.message); }
+})();
+
+fetchPricesAndScore();
+setInterval(fetchPricesAndScore, 30000);
+
+window.addEventListener('load', function() {
+  var sk = localStorage.getItem('bnc_apikey');
+  var ss = localStorage.getItem('bnc_secret');
+  var se = localStorage.getItem('bnc_env');
+  if (sk) document.getElementById('apiKey').value = sk;
+  if (ss) document.getElementById('secretKey').value = ss;
+  if (se) document.getElementById('envSelect').value = se;
+});
+document.getElementById('apiKey').addEventListener('change', function(e) { localStorage.setItem('bnc_apikey', e.target.value); });
+document.getElementById('secretKey').addEventListener('change', function(e) { localStorage.setItem('bnc_secret', e.target.value); });
+document.getElementById('envSelect').addEventListener('change', function(e) { localStorage.setItem('bnc_env', e.target.value); });
+</script>
+</body>
+</html>
